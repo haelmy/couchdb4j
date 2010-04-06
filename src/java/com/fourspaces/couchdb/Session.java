@@ -16,6 +16,7 @@
 
 package com.fourspaces.couchdb;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
@@ -23,6 +24,7 @@ import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
+import javax.activation.MimetypesFileTypeMap;
 
 import net.sf.json.JSONArray;
 
@@ -46,6 +48,7 @@ import org.apache.http.conn.scheme.PlainSocketFactory;
 import org.apache.http.conn.scheme.Scheme;
 import org.apache.http.conn.scheme.SchemeRegistry;
 import org.apache.http.conn.ssl.SSLSocketFactory;
+import org.apache.http.entity.FileEntity;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
@@ -330,7 +333,7 @@ public class Session {
 	 * @return
 	 */
 	CouchResponse put(String url) {
-		return put(url,null);
+		return put(url,(String)null);
 	}
 	/**
 	 * Send a PUT with a body (for creating documents)
@@ -352,6 +355,23 @@ public class Session {
 		}
 		return http(put);
 	}
+        /**
+         * Sends a file (for creating attachments)
+         * @param url
+         * @param file
+         * @return
+         */
+        CouchResponse put(String url, File file) {
+            HttpPut put = new HttpPut(buildUrl(url));
+            if(file != null) {
+                HttpEntity entity;
+                String mime = new MimetypesFileTypeMap().getContentType(file);
+                entity = new FileEntity(file, mime);
+                put.setEntity(entity);
+                put.setHeader(new BasicHeader("Content-Type", mime));
+            }
+            return http(put);
+        }
 
 	/**
 	 * Send a GET request
@@ -452,4 +472,5 @@ public class Session {
 			throw new RuntimeException(e);
 		}	
 	}
+
 }

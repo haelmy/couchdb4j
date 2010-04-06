@@ -16,6 +16,7 @@
 
 package com.fourspaces.couchdb;
 
+import java.io.File;
 import java.io.IOException;
 
 import com.fourspaces.couchdb.util.JSONUtils;
@@ -380,5 +381,15 @@ public class Database {
 			return false;
 		}
 		
-	}
+    }
+
+  public boolean saveAttachment(Document doc, String aname, File file) throws IOException {
+      // TODO: if aname is not ""
+
+      CouchResponse resp = session.put(name + "/" + urlEncodePath(doc.getId()) + "/" + aname + "?rev=" + doc.getRev(), file);
+
+      System.out.println(resp.getErrorId() + " : " + resp.getErrorReason());
+
+      return resp.isOk();
+  }
 }

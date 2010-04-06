@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.fourspaces.couchdb.util.JSONUtils;
+import java.io.File;
 import net.sf.json.*;
 
 import org.apache.commons.lang.StringUtils;
@@ -112,6 +113,13 @@ public class Document implements Map {
 	public void setId(String id)  {
 		object.put("_id",id);
 	}
+
+        public void addAttachment(String aname, File file) throws IOException {
+            if(database == null) {
+                throw new RuntimeException("Save the document first");
+            }
+            database.saveAttachment(this, aname, file);
+        }
 
 	/**
 	 * This strips _design from the document id
