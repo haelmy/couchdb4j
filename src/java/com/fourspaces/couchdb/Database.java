@@ -388,8 +388,6 @@ public class Database {
 
       CouchResponse resp = session.put(name + "/" + urlEncodePath(doc.getId()) + "/" + aname + "?rev=" + doc.getRev(), file);
 
-      System.out.println(resp.getErrorId() + " : " + resp.getErrorReason());
-
       return resp.isOk();
   }
 }

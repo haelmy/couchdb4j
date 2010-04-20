@@ -32,10 +32,17 @@ import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.http.HttpEntity;
+import org.apache.http.HttpException;
+import org.apache.http.HttpHost;
+import org.apache.http.HttpRequest;
+import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
 import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.AuthState;
+import org.apache.http.auth.Credentials;
 import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.CredentialsProvider;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
@@ -44,17 +51,21 @@ import org.apache.http.client.methods.HttpPut;
 import org.apache.http.client.methods.HttpRequestBase;
 import org.apache.http.client.params.AllClientPNames;
 import org.apache.http.client.params.ClientPNames;
+import org.apache.http.client.protocol.ClientContext;
 import org.apache.http.conn.scheme.PlainSocketFactory;
 import org.apache.http.conn.scheme.Scheme;
 import org.apache.http.conn.scheme.SchemeRegistry;
 import org.apache.http.conn.ssl.SSLSocketFactory;
 import org.apache.http.entity.FileEntity;
 import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.auth.BasicScheme;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
 import org.apache.http.message.BasicHeader;
 import org.apache.http.params.BasicHttpParams;
 import org.apache.http.params.HttpParams;
+import org.apache.http.protocol.ExecutionContext;
+import org.apache.http.protocol.HttpContext;
 
 /**
  * The Session is the main connection to the CouchDB instance.  However, you'll only use the Session
@@ -115,9 +126,31 @@ public class Session {
 		DefaultHttpClient defaultClient = new DefaultHttpClient(connManager, httpParams);
 		if (user != null) {
 			defaultClient.getCredentialsProvider().setCredentials( AuthScope.ANY, new UsernamePasswordCredentials(user, pass) );
+
+                        HttpRequestInterceptor preemptiveAuth = new HttpRequestInterceptor() {
+                            public void process(final HttpRequest request, final HttpContext context) throws HttpException, IOException {
+                                AuthState authState = (AuthState) context.getAttribute(ClientContext.TARGET_AUTH_STATE);
+                                CredentialsProvider credsProvider = (CredentialsProvider) context.getAttribute(ClientContext.CREDS_PROVIDER);
+                                HttpHost targetHost = (HttpHost) context.getAttribute(ExecutionContext.HTTP_TARGET_HOST);
+
+                                if (authState.getAuthScheme() == null) {
+                                    AuthScope authScope = new AuthScope(targetHost.getHostName(), targetHost.getPort());
+                                    Credentials creds = credsProvider.getCredentials(authScope);
+                                    if (creds != null) {
+                                        authState.setAuthScheme(new BasicScheme());
+                                        authState.setCredentials(creds);
+                                    }
+                                }
+                            }
+                        };
+
+                        defaultClient.addRequestInterceptor(preemptiveAuth, 0);
+
 		}
 		
 		this.httpClient = defaultClient;
+
+
 
 		setUserAgent("couchdb4j");
 		setSocketTimeout( (30 * 1000) );
@@ -134,7 +167,7 @@ public class Session {
 	 * @param pass - password
 	 */
 	public Session(String host, int port, String user, String pass) {
-		this(host, port, user, pass, false, false);
+		this(host, port, user, pass, true, false);
 	}
 
 	/**
@@ -415,12 +448,12 @@ public class Session {
 	protected CouchResponse http(HttpRequestBase req) {
 
 		HttpResponse httpResponse = null;
-		HttpEntity entity = null;
-		
+		HttpEntity entity = null;		
 		try {
 			if (usesAuth) {
 				req.getParams().setBooleanParameter(ClientPNames.HANDLE_AUTHENTICATION, true);
 			}
+
 			httpResponse = httpClient.execute(req);
 			entity = httpResponse.getEntity();
 			lastResponse = new CouchResponse(req, httpResponse);

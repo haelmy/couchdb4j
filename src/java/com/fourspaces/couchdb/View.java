@@ -186,6 +186,10 @@ public class View {
 		setBooleanParameter("group", group);
 	}
 
+        public void setReduce(Boolean reduce) {
+            setBooleanParameter("reduce", reduce);
+        }
+
 	/**
 	 * Skip listing these keys (not sure if this works, or the format)
 	 * 
@@ -234,11 +238,7 @@ public class View {
 	}
 	
 	private void setBooleanParameter(String param, Boolean value) {
-		if(value) {
-			queryParams.put(param, String.valueOf(value));
-		} else {
-			queryParams.remove(param);
-		}
+            queryParams.put(param, String.valueOf(value));
 	}
 
 }
